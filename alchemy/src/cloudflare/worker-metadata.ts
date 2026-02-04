@@ -223,6 +223,15 @@ export interface WorkerMetadata {
     cpu_ms?: number;
   };
   tail_consumers?: Array<Worker | { service: string }>;
+  /**
+   * Send Email configurations (snake_case for API)
+   */
+  send_email?: Array<{
+    name: string;
+    destination_address?: string;
+    allowed_destination_addresses?: string[];
+    allowed_sender_addresses?: string[];
+  }>;
 }
 
 export async function prepareWorkerMetadata(
@@ -339,6 +348,33 @@ export async function prepareWorkerMetadata(
 
   const observability = camelToSnakeObjectDeep(props.observability);
 
+  // Validate sendEmail configurations
+  if (props.sendEmail) {
+    for (const config of props.sendEmail) {
+      // Validate mutual exclusivity
+      if (config.destinationAddress && config.allowedDestinationAddresses) {
+        throw new Error(
+          `Send Email config "${config.name}": cannot specify both destinationAddress and allowedDestinationAddresses`,
+        );
+      }
+
+      // Basic email validation
+      const validateEmail = (email: string) => {
+        if (!email.includes("@")) {
+          throw new Error(`Invalid email address: ${email}`);
+        }
+      };
+
+      if (config.destinationAddress) validateEmail(config.destinationAddress);
+      if (config.allowedDestinationAddresses) {
+        config.allowedDestinationAddresses.forEach(validateEmail);
+      }
+      if (config.allowedSenderAddresses) {
+        config.allowedSenderAddresses.forEach(validateEmail);
+      }
+    }
+  }
+
   // Prepare metadata with bindings
   const meta: WorkerMetadata = {
     compatibility_date: props.compatibilityDate,
@@ -346,6 +382,12 @@ export async function prepareWorkerMetadata(
     tail_consumers: props.tailConsumers?.map((consumer) =>
       isWorker(consumer) ? { service: consumer.name } : consumer,
     ),
+    send_email: props.sendEmail?.map((config) => ({
+      name: config.name,
+      destination_address: config.destinationAddress,
+      allowed_destination_addresses: config.allowedDestinationAddresses,
+      allowed_sender_addresses: config.allowedSenderAddresses,
+    })),
     bindings: [],
     observability: {
       ...observability,

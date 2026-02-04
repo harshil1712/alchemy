@@ -199,6 +199,15 @@ export async function WranglerJson(
     });
   }
 
+  if (worker.sendEmail && worker.sendEmail.length > 0) {
+    spec.send_email = worker.sendEmail.map((config) => ({
+      name: config.name,
+      destination_address: config.destinationAddress,
+      allowed_destination_addresses: config.allowedDestinationAddresses,
+      allowed_sender_addresses: config.allowedSenderAddresses,
+    }));
+  }
+
   if (worker.crons && worker.crons.length > 0) {
     spec.triggers = { crons: worker.crons };
   }

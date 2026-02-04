@@ -390,6 +390,14 @@ export interface BaseWorkerProps<
    * Tail consumers that will receive execution logs from this worker
    */
   tailConsumers?: Array<Worker | { service: string }>;
+
+  /**
+   * Send Email configurations for this worker
+   *
+   * @example
+   * sendEmail: [{ name: "EMAIL", allowedSenderAddresses: ["[email protected]"] }]
+   */
+  sendEmail?: SendEmailConfig[];
 }
 
 export interface WorkerObservability {
@@ -599,6 +607,36 @@ export interface WorkerPlacementHostname {
    * @example "my_api_server.com"
    */
   hostname: string;
+}
+
+/**
+ * Configuration for a Send Email binding
+ *
+ * Allows Workers to send transactional emails from verified domains.
+ * Requires Cloudflare Email Routing enabled and Workers Paid plan.
+ *
+ * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/
+ */
+export interface SendEmailConfig {
+  /**
+   * The binding name to access the Send Email service
+   */
+  name: string;
+
+  /**
+   * Restrict emails to a single destination address (mutually exclusive with allowedDestinationAddresses)
+   */
+  destinationAddress?: string;
+
+  /**
+   * Allowlist of destination addresses (mutually exclusive with destinationAddress)
+   */
+  allowedDestinationAddresses?: string[];
+
+  /**
+   * Allowlist of sender addresses
+   */
+  allowedSenderAddresses?: string[];
 }
 
 export interface InlineWorkerProps<
