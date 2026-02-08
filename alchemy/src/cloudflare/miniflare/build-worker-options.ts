@@ -13,7 +13,7 @@ import type {
 } from "../bindings.ts";
 import { isQueueEventSource, type EventSource } from "../event-source.ts";
 import type { WorkerBundle, WorkerBundleSource } from "../worker-bundle.ts";
-import type { AssetsConfig } from "../worker.ts";
+import type { AssetsConfig, SendEmailConfig } from "../worker.ts";
 import { createRemoteProxyWorker } from "./remote-binding-proxy.ts";
 
 export interface MiniflareWorkerInput {
@@ -29,6 +29,7 @@ export interface MiniflareWorkerInput {
   port: number | undefined;
   tunnel: boolean | undefined;
   cwd: string;
+  sendEmail: SendEmailConfig[] | undefined;
 }
 
 type RemoteOnlyBindingType =
@@ -42,7 +43,8 @@ type RemoteOptionalBindingType =
   | "images"
   | "kv_namespace"
   | "queue"
-  | "r2_bucket";
+  | "r2_bucket"
+  | "send_email";
 
 type RemoteBinding =
   | (Extract<
@@ -363,6 +365,43 @@ export const buildWorkerOptions = async (
       (options.queueConsumers ??= {})[eventSource.name] = {};
     }
   }
+  // Process SendEmail configurations
+  for (const config of input.sendEmail ?? []) {
+    if (config.dev?.remote) {
+      // Remote mode: Connect to real Cloudflare Email Routing
+      remoteBindings.push({
+        type: "send_email",
+        name: config.name,
+        destination_address:
+          "destinationAddress" in config
+            ? config.destinationAddress
+            : undefined,
+        allowed_destination_addresses:
+          "allowedDestinationAddresses" in config
+            ? config.allowedDestinationAddresses
+            : undefined,
+        allowed_sender_addresses: config.allowedSenderAddresses,
+        raw: true,
+      });
+    } else {
+      // Local mode: Create mock binding that logs to console
+      (options.bindings ??= {})[config.name] = {
+        send: (message: any) => {
+          logger.info(
+            `[SendEmail Mock] Would send email from ${message.from} to ${Array.isArray(message.to) ? message.to.join(", ") : message.to}`,
+          );
+          logger.info(`[SendEmail Mock] Subject: ${message.subject}`);
+          logger.info(
+            `[SendEmail Mock] Body: ${message.content?.text || message.content?.html || "(no content)"}`,
+          );
+          return Promise.resolve({
+            success: true,
+            id: `mock-${Date.now()}`,
+          });
+        },
+      };
+    }
+  }
   async function* watch(signal: AbortSignal) {
     for await (const bundle of input.bundle.watch(signal)) {
       const { modules, rootPath } = normalizeBundle(bundle);
@@ -432,6 +471,12 @@ export const buildWorkerOptions = async (
         case "r2_bucket":
           (options.r2Buckets ??= {})[binding.name] = {
             id: binding.bucket_name,
+            remoteProxyConnectionString: remoteProxy.connectionString,
+          };
+          break;
+        case "send_email":
+          (options.bindings ??= {})[binding.name] = {
+            name: binding.name,
             remoteProxyConnectionString: remoteProxy.connectionString,
           };
           break;

@@ -163,6 +163,7 @@ describe("Worker send email", () => {
           name: `${testId}-invalid`,
           entrypoint: `${__dirname}/test-handlers/basic-fetch.ts`,
           sendEmail: [
+            // @ts-expect-error - TypeScript now prevents this invalid combination at compile time
             {
               name: "EMAIL",
               destinationAddress: "[email protected]",

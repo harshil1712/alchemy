@@ -615,28 +615,88 @@ export interface WorkerPlacementHostname {
  * Allows Workers to send transactional emails from verified domains.
  * Requires Cloudflare Email Routing enabled and Workers Paid plan.
  *
+ * Only one destination mode can be specified at a time (mutually exclusive).
+ *
  * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/
  */
-export interface SendEmailConfig {
+export type SendEmailConfig =
+  | SendEmailSingleDestination
+  | SendEmailMultipleDestinations;
+
+/**
+ * Send Email configuration with a single restricted destination address.
+ *
+ * Use this when you want to restrict all emails sent via this binding
+ * to a single destination address.
+ *
+ * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/
+ */
+export interface SendEmailSingleDestination {
   /**
    * The binding name to access the Send Email service
    */
   name: string;
 
   /**
-   * Restrict emails to a single destination address (mutually exclusive with allowedDestinationAddresses)
+   * Restrict emails to this single destination address
    */
-  destinationAddress?: string;
+  destinationAddress: string;
 
   /**
-   * Allowlist of destination addresses (mutually exclusive with destinationAddress)
-   */
-  allowedDestinationAddresses?: string[];
-
-  /**
-   * Allowlist of sender addresses
+   * Optional allowlist of sender addresses
    */
   allowedSenderAddresses?: string[];
+
+  /**
+   * Development configuration
+   */
+  dev?: {
+    /**
+     * Whether to run remotely instead of using local mock
+     * - false (default): Logs email attempts to console without sending
+     * - true: Connects to Cloudflare Email Routing to actually send emails
+     * @default false
+     */
+    remote?: boolean;
+  };
+}
+
+/**
+ * Send Email configuration with multiple allowed destination addresses.
+ *
+ * Use this when you want to allow emails to be sent to a specific set
+ * of destination addresses.
+ *
+ * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/
+ */
+export interface SendEmailMultipleDestinations {
+  /**
+   * The binding name to access the Send Email service
+   */
+  name: string;
+
+  /**
+   * Allowlist of destination addresses
+   */
+  allowedDestinationAddresses: string[];
+
+  /**
+   * Optional allowlist of sender addresses
+   */
+  allowedSenderAddresses?: string[];
+
+  /**
+   * Development configuration
+   */
+  dev?: {
+    /**
+     * Whether to run remotely instead of using local mock
+     * - false (default): Logs email attempts to console without sending
+     * - true: Connects to Cloudflare Email Routing to actually send emails
+     * @default false
+     */
+    remote?: boolean;
+  };
 }
 
 export interface InlineWorkerProps<
@@ -1166,6 +1226,7 @@ const _Worker = Resource(
           port: props.dev?.port,
           tunnel: props.dev?.tunnel ?? this.scope.tunnel,
           cwd: props.cwd ?? process.cwd(),
+          sendEmail: props.sendEmail,
         });
         this.onCleanup(() => controller.dispose());
       }

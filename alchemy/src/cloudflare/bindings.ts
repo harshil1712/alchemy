@@ -136,6 +136,7 @@ export type WorkerBindingSpec =
   | WorkerBindingSecretText
   | WorkerBindingSecretsStore
   | WorkerBindingSecretsStoreSecret
+  | WorkerBindingSendEmail
   | WorkerBindingService
   | WorkerBindingStaticContent
   | WorkerBindingTailConsumer
@@ -405,6 +406,22 @@ export interface WorkerBindingSecretsStoreSecret {
   store_id: string;
   /** Secret name */
   secret_name: string;
+}
+
+/**
+ * Send Email binding type
+ */
+export interface WorkerBindingSendEmail {
+  /** The name of the binding */
+  name: string;
+  /** Type identifier for Send Email binding */
+  type: "send_email";
+  /** Single destination address (mutually exclusive with allowed_destination_addresses) */
+  destination_address?: string;
+  /** Allowlist of destination addresses (mutually exclusive with destination_address) */
+  allowed_destination_addresses?: string[];
+  /** Optional allowlist of sender addresses */
+  allowed_sender_addresses?: string[];
 }
 
 /**
